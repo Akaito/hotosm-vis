@@ -1,4 +1,7 @@
 -- Extract data we'll be using for Processing
+.headers on
+.mode csv
+.output data/for-processing.csv
 
 -- db schema:
 -- CREATE TABLE Changeset (
@@ -56,6 +59,34 @@ with InterestingChangesets as (
 		from  ChangesetTag
 		where key='comment' and value like '%#hotosm-project-2044%'
 )
+-- select * from InterestingChangesets;
 
-select * from InterestingChangesets;
+, InterestingWays as (
+	select wayId, timestamp
+		from Way
+		where Way.changesetId in InterestingChangesets
+)
+-- select * from InterestingWays;
+
+, InterestingWaysWithNodeIds as (
+	select InterestingWays.wayId, timestamp, nodeId
+		from InterestingWays
+			left join WayNode on InterestingWays.wayId = WayNode.wayId
+)
+-- select * from InterestingWaysWithNodeIds;
+
+, InterestingWaysWithNodes as (
+	select
+		InterestingWaysWithNodeIds.wayId,
+	    InterestingWaysWithNodeIds.timestamp,
+		InterestingWaysWithNodeIds.nodeId,
+		lat,
+		lon
+	from InterestingWaysWithNodeIds
+		left join Node on InterestingWaysWithNodeIds.nodeId = Node.nodeId
+)
+-- select * from InterestingWaysWithNodes;
+
+
+select timestamp, wayId, nodeId, lat, lon from InterestingWaysWithNodes order by timestamp asc, wayId;
 
