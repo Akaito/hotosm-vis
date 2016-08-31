@@ -4,7 +4,7 @@ import json
 import os
 import requests
 import sqlite3
-import time.sleep
+from time import sleep
 import xml.etree.ElementTree
 
 # our bbox
@@ -203,6 +203,8 @@ def store_changeset_from_api(id):
 
     r = requests.get(osm_api_url + 'changeset/' + str(id))
     r.raise_for_status()
+    # be gentle with the OSM API
+    sleep(0.01)
 
     with open(xml_filepath, 'wt') as f:
         f.write(r.text)
@@ -271,8 +273,6 @@ def get_all_changeset_data():
         changeset_id = changeset_id[0]
         store_changeset_from_api(changeset_id)
         store_changeset_file_in_db(changeset_id)
-        # be gentle with the OSM API
-        time.sleep(0.01)
     db_conn.commit()
 
 
