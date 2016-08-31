@@ -109,14 +109,18 @@ def prepare_db():
 
 
 def get_stuff_in_area():
-    if os.path.isfile('data/01_nodes.json'):
+    if os.path.isfile('data/osm.json'):
         return
 
     r = requests.get(overpass_ql_url, headers=overpass_ql_headers, data=nodes_and_ways_query)
     r.raise_for_status()
 
-    with open('data/01_nodes.json', 'wt') as f:
+    with open('data/osm.json', 'wt') as f:
         f.write(r.text)
+
+
+def store_stuff_in_db(osm_json_path):
+    pass
 
 
 def store_changeset_from_api(id):
@@ -192,10 +196,13 @@ changeset_url_format = 'http://api.openstreetmap.org/api/0.6/changeset/{}'  # (i
 '''
 
 prepare_db()
-get_stuff_in_area()
-store_changeset_from_api(41177103)
-store_changeset_file_in_db(41177103)
-print(db_conn.execute('select * from Changeset').fetchall())
+get_stuff_in_area()  # super expensive!  Wait minutes for multi-GB download of JSON.
+
+store_stuff_in_db('data/osm.json')
+
+#store_changeset_from_api(41177103)
+#store_changeset_file_in_db(41177103)
+#print(db_conn.execute('select * from Changeset').fetchall())
 
 db_conn.commit()
 db_conn.close()
