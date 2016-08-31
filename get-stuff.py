@@ -4,6 +4,7 @@ import json
 import os
 import requests
 import sqlite3
+import time.sleep
 import xml.etree.ElementTree
 
 # our bbox
@@ -140,13 +141,14 @@ def store_stuff_in_db(osm_json_path):
             db_conn.commit()  # save to disk every 1% (is that what this does?)
             if new_percent_done % 10 == 0:
                 print('  {}% through source data...'.format(new_percent_done))
-        percent_done = new_percent_done
+            percent_done = new_percent_done
         if element_jsn['type'] == 'node':
             db_create_node(element_jsn)
         elif element_jsn['type'] == 'way':
             db_create_way(element_jsn)
         else:
             print('  Ignored element type:', element_jsn['type'])
+    db_conn.commit()
 
 
 def db_create_node(node_jsn):
@@ -252,28 +254,33 @@ def get_changeset_from_disk(id):
         return f.read()
 
 
-# Get changeset data
-changeset_url_format = 'http://api.openstreetmap.org/api/0.6/changeset/{}'  # (id)
-# example_output
-'''
-<?xml version="1.0" encoding="UTF-8"?>
-<osm version="0.6" generator="OpenStreetMap server" copyright="OpenStreetMap and contributors" attribution="http://www.openstreetmap.org/copyright" license="http://opendatacommons.org/licenses/odbl/1-0/">
-    <changeset id="41177103" user="searker" uid="4230804" created_at="2016-08-01T20:31:11Z" closed_at="2016-08-01T21:37:33Z" open="false" min_lat="7.004053" min_lon="0.6677343" max_lat="7.3201202" max_lon="0.8197606" comments_count="0">
-        <tag k="source" v="Bing"/>
-        <tag k="created_by" v="JOSM/1.5 (10526 en)"/>
-        <tag k="comment" v="#hotosm-project-2044 #PeaceCorps #PCTogo source=Bing"/>
-    </changeset>
-</osm>
-'''
+def get_all_changeset_data():
+    print('Getting changeset data for each Node from OSM API, and storing in local database...')
+    changeset_id_rows = db_cursor.execute('SELECT DISTINCT(changesetId) FROM Node;').fetchall()
+    i = 0
+    percent_done = 0
+    for changeset_id in changeset_id_rows:
+        i += 1
+        new_percent_done = int((float(i) / len(changeset_id_rows)) * 100)
+        if new_percent_done != percent_done:
+            db_conn.commit()  # save to disk every 1% (is that what this does?)
+            if new_percent_done % 10 == 0:
+                print('  {}% through changesets...'.format(new_percent_done))
+            percent_done = new_percent_done
 
+        changeset_id = changeset_id[0]
+        store_changeset_from_api(changeset_id)
+        store_changeset_file_in_db(changeset_id)
+        # be gentle with the OSM API
+        time.sleep(0.01)
+    db_conn.commit()
+
+
+# do stuff
 prepare_db()
-get_stuff_in_area()  # super expensive!  Wait minutes for multi-GB download of JSON.
-
-store_stuff_in_db('data/osm.json')
-
-#store_changeset_from_api(41177103)
-#store_changeset_file_in_db(41177103)
-#print(db_conn.execute('select * from Changeset').fetchall())
+get_stuff_in_area()  # Wait a while for tens of MB or more of JSON.
+store_stuff_in_db('data/osm.json')  # Wait a while for each Node and Way to be stored in sqlite db.
+get_all_changeset_data()
 
 db_conn.commit()
 db_conn.close()
