@@ -137,16 +137,16 @@ def store_stuff_in_db(osm_json_path):
         i += 1
         new_percent_done = int((float(i) / len(jsn['elements'])) * 100)
         if new_percent_done != percent_done:
+            db_conn.commit()  # save to disk every 1% (is that what this does?)
             if new_percent_done % 10 == 0:
-                print(  '{}% through source data...'.format(new_percent_done))
+                print('  {}% through source data...'.format(new_percent_done))
         percent_done = new_percent_done
         if element_jsn['type'] == 'node':
             db_create_node(element_jsn)
         elif element_jsn['type'] == 'way':
             db_create_way(element_jsn)
         else:
-            print('Encountered another element type:', element_jsn['type'])
-            break
+            print('  Ignored element type:', element_jsn['type'])
 
 
 def db_create_node(node_jsn):
@@ -166,7 +166,6 @@ def db_create_node(node_jsn):
         )
     except sqlite3.IntegrityError as e:
         return
-    db_conn.commit()
 
 
 def db_create_way(way_jsn):
@@ -193,7 +192,6 @@ def db_create_way(way_jsn):
     if 'tags' in way_jsn.keys():
         for k,v in way_jsn['tags'].items():
             db_cursor.execute('INSERT INTO WayTag (wayId, key, value) VALUES (?,?,?);', [way_jsn['id'], k, v])
-    db_conn.commit()
 
 
 def store_changeset_from_api(id):
