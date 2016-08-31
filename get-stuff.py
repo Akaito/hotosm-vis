@@ -46,6 +46,7 @@ osm_api_url = 'http://api.openstreetmap.org/api/0.6/'
 
 
 def prepare_db():
+    print('Preparing sqlite database...')
     global db_conn, db_cursor
     #db_conn = sqlite3.connect(':memory:')
     db_conn = sqlite3.connect('data/sqlite.db')
@@ -75,8 +76,10 @@ def prepare_db():
             nodeId    integer not null primary key,
             lat       number  not null,
             lon       number  not null,
-            version   integer not null,
             timestamp text not null,
+            version   integer not null,
+            changesetId integer not null
+                REFERENCES Changeset(changesetId),
             user      text not null,
             userId    integer not null
         )
@@ -85,6 +88,7 @@ def prepare_db():
         CREATE TABLE IF NOT EXISTS Way (
             wayId       integer not null primary key,
             timestamp   text    not null,
+            version     integer not null,
             changesetId integer not null
                 REFERENCES Changeset(changesetId),
             user        text    not null,
@@ -113,20 +117,83 @@ def get_stuff_in_area():
     if os.path.isfile('data/osm.json'):
         return
 
+    print('Requesting OSM stuff from the given bounding box using Overpass Query Language...')
     r = requests.get(overpass_ql_url, headers=overpass_ql_headers, data=nodes_and_ways_query)
     r.raise_for_status()
 
+    print('  Writing result to disk...')
     with open('data/osm.json', 'wt') as f:
         f.write(r.text)
 
 
 def store_stuff_in_db(osm_json_path):
+    print('Storing local cache of Overpass API results into sqlite db...')
     jsn = None
     with open(osm_json_path) as f:
         jsn = json.load(f)
+    i = 0
+    percent_done = 0
     for element_jsn in jsn['elements']:
-        print(element_jsn['type'])
-        break
+        i += 1
+        new_percent_done = int((float(i) / len(jsn['elements'])) * 100)
+        if new_percent_done != percent_done:
+            if new_percent_done % 10 == 0:
+                print(  '{}% through source data...'.format(new_percent_done))
+        percent_done = new_percent_done
+        if element_jsn['type'] == 'node':
+            db_create_node(element_jsn)
+        elif element_jsn['type'] == 'way':
+            db_create_way(element_jsn)
+        else:
+            print('Encountered another element type:', element_jsn['type'])
+            break
+
+
+def db_create_node(node_jsn):
+    try:
+        db_cursor.execute(
+            'INSERT OR ABORT INTO Node (nodeId, lat, lon, timestamp, version, changesetId, user, userId) VALUES (?,?,?,?,?,?,?,?);',
+            [
+                node_jsn['id'],
+                node_jsn['lat'],
+                node_jsn['lon'],
+                node_jsn['timestamp'],
+                node_jsn['version'],
+                node_jsn['changeset'],
+                node_jsn['user'],
+                node_jsn['uid'],
+            ]
+        )
+    except sqlite3.IntegrityError as e:
+        return
+    db_conn.commit()
+
+
+def db_create_way(way_jsn):
+    if 'nodes' not in way_jsn.keys():
+        print("Way {} doesn't have nodes; skipped.".format(way_jsn['id']))
+        return
+
+    try:
+        db_cursor.execute(
+            'INSERT OR ABORT INTO Way (wayId, timestamp, version, changesetId, user, userId) VALUES (?,?,?,?,?,?);',
+            [
+                way_jsn['id'],
+                way_jsn['timestamp'],
+                way_jsn['version'],
+                way_jsn['changeset'],
+                way_jsn['user'],
+                way_jsn['uid'],
+            ]
+        )
+    except sqlite3.IntegrityError as e:
+        return
+    for node_id in way_jsn['nodes']:
+        db_cursor.execute('INSERT INTO WayNode (wayId, nodeId) VALUES (?,?);', [way_jsn['id'], node_id])
+    if 'tags' in way_jsn.keys():
+        for k,v in way_jsn['tags'].items():
+            db_cursor.execute('INSERT INTO WayTag (wayId, key, value) VALUES (?,?,?);', [way_jsn['id'], k, v])
+    db_conn.commit()
 
 
 def store_changeset_from_api(id):
