@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+import json
 import os
 import requests
 import sqlite3
@@ -120,7 +121,12 @@ def get_stuff_in_area():
 
 
 def store_stuff_in_db(osm_json_path):
-    pass
+    jsn = None
+    with open(osm_json_path) as f:
+        jsn = json.load(f)
+    for element_jsn in jsn['elements']:
+        print(element_jsn['type'])
+        break
 
 
 def store_changeset_from_api(id):
