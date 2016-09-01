@@ -3,6 +3,8 @@ README
 
 Render OpenStreetMap features in different colors, depending on if they're part of a particular HOTOSM project or not.
 
+![Sample Output](https://codesaru.com/hotosm.png)
+
 ## How to Use
 
 1. ./get-stuff.py
