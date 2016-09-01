@@ -4,10 +4,23 @@ float minLat = 0.0f;
 float minLon = 0.0f;
 float maxLat = 0.0f;
 float maxLon = 0.0f;
-int   myOutputWidth  = 1366;
-int   myOutputHeight = 768;
+float myOutputWidth  = 0.0f;
+float myOutputHeight = 0.0f;
 
 int frame = 0;
+
+
+float XFromLon(float lon) {
+  float percent = (maxLon - lon) / (maxLon - minLon);
+  return percent * myOutputWidth + (width - myOutputWidth) / 2;
+}
+
+
+float YFromLat(float lat) {
+  float percent = (maxLat - lat) / (maxLat - minLat);
+  return percent * myOutputHeight + (height - myOutputHeight) / 2;
+}
+
 
 String[] GetNodes (String path) {
   String[] result = loadStrings(path);
@@ -35,11 +48,11 @@ String[] GetNodes (String path) {
 void DrawNode (String csvLine) {
   // 0: timestamp, 1: wayId, 2: nodeId, 3: lat, 4: lon
     String[] fields = split(csvLine, ',');
-    float latPercent = (maxLat - Float.parseFloat(fields[3])) / (maxLat - minLat);
-    float lonPercent = (maxLon - Float.parseFloat(fields[4])) / (maxLon - minLon);
-    float x = latPercent * myOutputWidth;
-    float y = lonPercent * myOutputHeight;
-
+    float lat = Float.parseFloat(fields[3]);
+    float lon = Float.parseFloat(fields[4]);
+    float x = XFromLon(lon);
+    float y = YFromLat(lat);
+    
     point(x, y);
 }
 
@@ -62,12 +75,24 @@ void setup() {
   colorMode(RGB, 1.0);
   hotosmCsvLines    = GetNodes("nodes-hotosm.csv");
   nothotosmCsvLines = GetNodes("nodes-not-hotosm.csv");
+  
+  float screenFitScale = min(
+    width / (maxLon - minLon),
+    height / (maxLat - minLat)
+  );
+  print(minLon, maxLon, screenFitScale, '\n');
+  print(minLat, maxLat, '\n');
+  myOutputWidth = (maxLon - minLon) * screenFitScale;
+  myOutputHeight = (maxLat - minLat) * screenFitScale;
+  //myOutputWidth = 1366; myOutputHeight = 786;
 }
 
 
 void draw() {
   // draw osm nodes as points
   if (frame == 0) {
+    // draw border
+    stroke(0, 0, 0.5);
     stroke(0, 0, 0);
     DrawNodes(nothotosmCsvLines);
     stroke(1, 0, 1);
