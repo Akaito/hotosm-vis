@@ -1,7 +1,7 @@
 -- Extract data we'll be using for Processing
 .headers on
 .mode csv
-.output data/for-processing.csv
+.output processing/data/nodes.csv
 
 -- db schema:
 -- CREATE TABLE Changeset (
