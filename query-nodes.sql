@@ -1,7 +1,7 @@
 -- Extract data we'll be using for Processing
 .headers on
 .mode csv
-.output processing/data/nodes-hotosm.csv
+.output processing/data/nodes.csv
 
 -- db schema:
 -- CREATE TABLE Changeset (
@@ -54,22 +54,63 @@
 --         );
 
 
-with InterestingChangesets as (
+with
+HotosmChangesets as (
 	select changesetId
-		from  ChangesetTag
-		where key='comment' and value like '%#hotosm-project-2044%'
+	from ChangesetTag
+	where key='comment' and value like '%#hotosm-project-2044%'
 )
--- select * from InterestingChangesets;
+
+, ChangesetsMarked as (
+	select
+		changesetId,
+		changesetId in (
+			select changesetId from ChangesetTag
+			where key='comment' and value like '%#hotosm-project-2044%'
+		) and changesetId in (select changesetId from Changeset) as isHotosm
+	from
+		ChangesetTag
+)
+-- select * from ChangesetsMarked;
 
 , InterestingWays as (
-	select wayId, timestamp
-		from Way
-		where Way.changesetId in InterestingChangesets
+	select
+		timestamp,
+		isHotosm,
+		wayId,
+		wayId in (
+			select wayId from WayTag
+			where
+				key='building'
+				or (key='leisure' and value like '%sport%')
+				or (key='amenity' and value in ('grave_yard', 'hospital', 'school'))
+		) as isBuilding,
+		wayId in (
+			select wayId from WayTag
+			where
+				key='highway'
+				or key='aeroway'
+				or key='waterway'
+				or key like '%fence%'
+		) as isPath
+	from Way
+		left join ChangesetsMarked on Way.changesetId = ChangesetsMarked.changesetId
+	where
+		wayId not in (
+			select wayId from WayTag
+			where
+				key='landuse' or key='natural' or key='area'
+				or key='parking'
+				or (key='surface' and value in ('grass', 'ground'))
+				or (key='amenity' and value in ('marketplace', 'parking'))
+				or (key='leisure' and value in ('pitch'))
+		)
+		and wayId in (select wayId from WayTag)
 )
 -- select * from InterestingWays;
 
 , InterestingWaysWithNodeIds as (
-	select InterestingWays.wayId, timestamp, nodeId
+	select InterestingWays.*, nodeId
 		from InterestingWays
 			left join WayNode on InterestingWays.wayId = WayNode.wayId
 )
@@ -77,9 +118,7 @@ with InterestingChangesets as (
 
 , InterestingWaysWithNodes as (
 	select
-		InterestingWaysWithNodeIds.wayId,
-	    InterestingWaysWithNodeIds.timestamp,
-		InterestingWaysWithNodeIds.nodeId,
+		InterestingWaysWithNodeIds.*,
 		lat,
 		lon
 	from InterestingWaysWithNodeIds
@@ -88,5 +127,6 @@ with InterestingChangesets as (
 -- select * from InterestingWaysWithNodes;
 
 
-select timestamp, wayId, nodeId, lat, lon from InterestingWaysWithNodes order by timestamp asc, wayId;
+select * from InterestingWaysWithNodes
+order by timestamp asc, wayId;
 
