@@ -180,7 +180,8 @@ void update() {
 
 
 void setup() {
-  size(2048, 2048);
+  //size(2048, 2048);
+  size(4096, 4096);
   noSmooth();
   colorMode(RGB, 1.0);
   GetNodes("nodes.csv");
@@ -199,6 +200,9 @@ void draw() {
   if (frame == 0) {
     //DrawNodes(csvLines);
     DrawWays(csvLines);
+    
+    if (width >= 4096)
+      save("output.png");
   }
   
   // draw hotosm nodes over time
