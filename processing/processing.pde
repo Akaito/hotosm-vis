@@ -79,6 +79,22 @@ void DrawNodes (String[] csvLines) {
 
 
 void DrawBuilding (FloatList pointsX, FloatList pointsY, boolean isHotosm) {
+  if (isHotosm)
+    stroke(0, 0, 1);
+  else
+    stroke(0, 0, 0.25);
+    
+  strokeWeight(1);
+  beginShape();
+  
+  int lineCount = pointsX.size();
+  for (int i = 0; i < lineCount; ++i) {
+    float x = pointsX.get(i);
+    float y = pointsY.get(i);
+    
+    vertex(x, y);
+  }
+  endShape(CLOSE);
 }
 
 
@@ -87,9 +103,9 @@ void DrawPath (FloatList pointsX, FloatList pointsY, boolean isHotosm) {
   if (isHotosm)
     stroke(1, 0, 0);
   else
-    stroke(0, 0, 0);
+    stroke(0.25, 0, 0);
     
-  strokeWeight(3);
+  strokeWeight(1);
   int lineCount = pointsX.size();
   for (int i = 0; i+1 < lineCount; ++i) {
     float x1 = pointsX.get(i);
@@ -138,8 +154,9 @@ void DrawWays (String[] csvLines) {
     float y = YFromLat(lat);
     
     if (wayId != lastWayId) {
-      if (lastIsBuilding)
+      if (lastIsBuilding) {
         DrawBuilding(pointsX, pointsY, isHotosm);
+      }
       else if (lastIsPath) {
         DrawPath(pointsX, pointsY, isHotosm);
       }
