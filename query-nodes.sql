@@ -128,5 +128,5 @@ HotosmChangesets as (
 
 
 select * from InterestingWaysWithNodes
-order by timestamp asc, wayId;
+order by timestamp asc, wayId asc, nodeId asc;
 
