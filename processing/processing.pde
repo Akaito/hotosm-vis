@@ -28,8 +28,8 @@ void setup() {
 }
 
 void draw() {
-  fill(192, 0, 0);
-  noStroke();
+  // draw nodes as points
+  noSmooth();
   
   for (int i = 1; i < csvLines.length; ++i) {
     // 0: timestamp, 1: wayId, 2: nodeId, 3: lat, 4: lon
@@ -39,6 +39,6 @@ void draw() {
     float x = latPercent * myOutputWidth;
     float y = lonPercent * myOutputHeight;
 
-    ellipse(x, y, 9, 9);
+    point(x, y);
   }
 }
